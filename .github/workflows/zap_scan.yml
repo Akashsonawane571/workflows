@@ -27,14 +27,17 @@ jobs:
             -J zap_report.json \
             -x report.xml
           
-      - name: Upload ZAP Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: ZAP-Reports
-          path: |
-            zap_report.html
-            zap_report.json
-            report.xml
+      - name: Save ZAP report to repo
+        run: |
+          mkdir -p zap-output
+          mv zap_report.* report.xml zap-output/
+          git config --global user.email "akashsonawane571@gmail.com"
+          git config --global user.name "akash sonawane"
+          git checkout -b zap-report
+          cp -r zap-output/* .
+          git add .
+          git commit -m "Add ZAP scan report"
+          git push origin zap-report --force
 
       - name: Cleanup
         if: always()  # Run even if previous steps fail
