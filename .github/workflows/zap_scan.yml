@@ -1,41 +1,44 @@
-name: ZAP Scan
+name: ZAP Security Scan
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
+    branches: [ main ]
+  pull_request: {}
 
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/zaproxy/zap-stable:latest
+      options: --network host
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Start Juice Shop (target app)
+      - name: Start Juice Shop
         run: |
-          docker pull bkimminich/juice-shop
-          docker run -d -p 3000:3000 --name juice-shop bkimminich/juice-shop
-          sleep 20 # Wait for app to start
+          docker run -d \
+            -p 3000:3000 \
+            --name juice-shop \
+            bkimminich/juice-shop
+          sleep 30  # Increased wait time
 
-      - name: Run OWASP ZAP scan
+      - name: Run ZAP Baseline Scan
         run: |
-          docker pull owasp/zap2docker-stable
-          docker run --network host -v ${{ github.workspace }}:/zap/wrk:rw \
-            owasp/zap2docker-stable zap-baseline.py \
+          zap-baseline.py \
             -t http://localhost:3000 \
-            -r zap_report.html
+            -r zap_report.html \
+            -J zap_report.json \
+            -x report.xml \
+            -a
 
-      - name: Show ZAP report in logs
-        run: |
-          echo "------ ZAP HTML Report ------"
-          cat zap_report.html
-          echo "------ END OF REPORT ------"
+      - name: Upload Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports
+          path: |
+            zap_report.html
+            zap_report.json
+            report.xml
 
       - name: Cleanup
         if: always()
-        run: |
-          docker stop juice-shop || true
-          docker rm juice-shop || true
+        run: docker rm -f juice-shop || true
