@@ -18,14 +18,11 @@ jobs:
           sleep 20 # Wait for app to start
 
       - name: Run OWASP ZAP scan
-        id: zap-scan
         run: |
-          docker pull owasp/zap2docker-stable
-          docker run --network host -t owasp/zap2docker-stable zap-baseline.py \
-            -t http://localhost:3000 \
-            -r zap_report.html \
-            -J zap_report.json \
-            -x report.xml
+          docker run --network host -v ${{ github.workspace }}:/zap/wrk:rw \
+          ghcr.io/zaproxy/zap-stable:latest zap-baseline.py \
+          -t http://localhost:3000 \
+          -r zap_report.html
           
       - name: Save ZAP report to repo
         run: |
