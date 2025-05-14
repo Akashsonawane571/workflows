@@ -8,23 +8,34 @@ on:
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/zaproxy/zap-stable:latest
-      options: --network host
-
+    
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        run: |
+          docker network create zap-net
+          docker pull bkimminich/juice-shop
+
       - name: Start Juice Shop
         run: |
           docker run -d \
-            -p 3000:3000 \
+            --network zap-net \
             --name juice-shop \
+            -p 3000:3000 \
             bkimminich/juice-shop
           sleep 30  # Increased wait time
 
-      - name: Run ZAP Baseline Scan
+      - name: Run ZAP Scan
         run: |
-          zap-baseline.py \
-            -t http://localhost:3000 \
+          docker pull owasp/zap2docker-stable
+          docker run \
+            --network zap-net \
+            -v $(pwd):/zap/wrk/:rw \
+            -t owasp/zap2docker-stable \
+            zap-baseline.py \
+            -t http://juice-shop:3000 \
             -r zap_report.html \
             -J zap_report.json \
             -x report.xml \
@@ -41,4 +52,6 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: docker rm -f juice-shop || true
+        run: |
+          docker rm -f juice-shop || true
+          docker network rm zap-net || true
