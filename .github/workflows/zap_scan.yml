@@ -26,7 +26,15 @@ jobs:
             --name juice-shop \
             -p 3000:3000 \
             bkimminich/juice-shop
-          sleep 30
+          sleep 30  # Wait for the application to start
+
+      - name: Check Juice Shop Status
+        run: |
+          # Check if Juice Shop is running
+          if ! curl -s http://localhost:3000 > /dev/null; then
+            echo "Juice Shop is not running. Exiting."
+            exit 1
+          fi
 
       - name: Create reports directory
         run: mkdir -p zap-reports && chmod 777 zap-reports
