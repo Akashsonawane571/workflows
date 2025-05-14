@@ -13,11 +13,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Debug: Show workspace contents
+        run: ls -la
+
       - name: Set up Docker
         run: |
           docker network create zap-net
           docker pull bkimminich/juice-shop
           docker pull owasp/zap2docker-stable
+          
+          # Debug: Show Docker images and network
+          docker images
+          docker network inspect zap-net
 
       - name: Start Juice Shop
         run: |
@@ -27,11 +34,18 @@ jobs:
             -p 3000:3000 \
             bkimminich/juice-shop
           sleep 30
+          
+          # Debug: Verify Juice Shop is running
+          docker ps
+          curl -v http://localhost:3000 || true
 
       - name: Prepare reports directory
         run: |
           mkdir -p zap-reports
           chmod 777 zap-reports
+          # Debug: Verify directory permissions
+          ls -ld zap-reports
+          touch zap-reports/testfile && echo "Directory writable" || echo "Directory not writable"
 
       - name: Run ZAP Scan
         run: |
@@ -46,11 +60,17 @@ jobs:
             -J /zap/wrk/zap_report.json \
             -x /zap/wrk/report.xml \
             -a
+          
+          # Debug: Show container logs
+          docker logs $(docker ps -lq) || true
 
-      - name: Check if reports exist
+      - name: Verify reports
         run: |
+          # Debug: Check report files
           ls -la zap-reports/
-          test -f zap-reports/zap_report.html || echo "Report file missing"
+          test -f zap-reports/zap_report.html && echo "HTML report exists" || echo "HTML report missing"
+          test -f zap-reports/zap_report.json && echo "JSON report exists" || echo "JSON report missing"
+          test -f zap-reports/report.xml && echo "XML report exists" || echo "XML report missing"
 
       - name: Upload Reports
         if: success() || failure()
@@ -62,5 +82,12 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
+          # Debug: Show containers before cleanup
+          docker ps -a
+          
           docker rm -f juice-shop || true
           docker network rm zap-net || true
+          
+          # Debug: Verify cleanup
+          docker ps -a
+          docker network ls
