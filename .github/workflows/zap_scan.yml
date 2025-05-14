@@ -4,25 +4,38 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   zap_scan:
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Start Juice Shop (target app)
         run: |
+          docker pull bkimminich/juice-shop
           docker run -d -p 3000:3000 --name juice-shop bkimminich/juice-shop
-          sleep 20
+          sleep 20 # Wait for app to start
 
       - name: Run OWASP ZAP scan
         run: |
-          docker run --network host -v ${{ github.workspace }}:/zap/wrk/:rw \
-            -t owasp/zap2docker-stable zap-baseline.py \
+          docker pull owasp/zap2docker-stable
+          docker run --network host -v ${{ github.workspace }}:/zap/wrk:rw \
+            owasp/zap2docker-stable zap-baseline.py \
             -t http://localhost:3000 \
             -r zap_report.html
 
-      - name: Upload ZAP Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: ZAP-Report
-          path: zap_report.html
+      - name: Show ZAP report in logs
+        run: |
+          echo "------ ZAP HTML Report ------"
+          cat zap_report.html
+          echo "------ END OF REPORT ------"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop juice-shop || true
+          docker rm juice-shop || true
