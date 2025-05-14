@@ -1,0 +1,23 @@
+name: OWASP ZAP Scan
+
+jobs:
+  zap_scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Start Juice Shop (target app)
+      run: |
+        docker run -d -p 3000:3000 --name juice-shop bkimminich/juice-shop
+        sleep 20 # Give it time to boot up
+        
+    - name: Run OWASP ZAP scan
+      run: |
+        docker run --network host -t owasp/zap2docker-stable zap-baseline.py \
+          -t http://localhost:3000 \
+          -r zap_report.html
+          
+    - name: Upload ZAP Report
+      uses: actions/upload-artifact@v2
+      with:
+        name: ZAP-Report
+        path: zap_report.html
