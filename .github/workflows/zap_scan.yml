@@ -17,7 +17,7 @@ jobs:
         run: |
           docker network create zap-net
           docker pull bkimminich/juice-shop
-          docker pull ghcr.io/zaproxy/zaproxy:stable
+          docker pull owasp/zap2docker-stable
 
       - name: Start Juice Shop
         run: |
@@ -28,24 +28,32 @@ jobs:
             bkimminich/juice-shop
           sleep 30
 
-      - name: Create reports directory
-        run: mkdir -p zap-reports && chmod 777 zap-reports
+      - name: Prepare reports directory
+        run: |
+          mkdir -p zap-reports
+          chmod 777 zap-reports
 
       - name: Run ZAP Scan
         run: |
           docker run \
             --network zap-net \
             -v $(pwd)/zap-reports:/zap/wrk/:rw \
-            -u zap:zap \
-            -t ghcr.io/zaproxy/zaproxy:stable \
+            -e ZAP_USER=root \
+            -t owasp/zap2docker-stable \
             zap-baseline.py \
             -t http://juice-shop:3000 \
-            -r zap_report.html \
-            -J zap_report.json \
-            -x report.xml \
+            -r /zap/wrk/zap_report.html \
+            -J /zap/wrk/zap_report.json \
+            -x /zap/wrk/report.xml \
             -a
 
+      - name: Check if reports exist
+        run: |
+          ls -la zap-reports/
+          test -f zap-reports/zap_report.html || echo "Report file missing"
+
       - name: Upload Reports
+        if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
           name: zap-reports
