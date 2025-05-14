@@ -17,6 +17,7 @@ jobs:
         run: |
           docker network create zap-net
           docker pull bkimminich/juice-shop
+          docker pull ghcr.io/zaproxy/zaproxy:stable
 
       - name: Start Juice Shop
         run: |
@@ -29,11 +30,10 @@ jobs:
 
       - name: Run ZAP Scan
         run: |
-          docker pull owasp/zap2docker-stable
           docker run \
             --network zap-net \
             -v $(pwd):/zap/wrk/:rw \
-            -t owasp/zap2docker-stable \
+            -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t http://juice-shop:3000 \
             -r zap_report.html \
