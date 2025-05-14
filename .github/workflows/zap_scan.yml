@@ -26,13 +26,17 @@ jobs:
             --name juice-shop \
             -p 3000:3000 \
             bkimminich/juice-shop
-          sleep 30  # Increased wait time
+          sleep 30
+
+      - name: Create reports directory
+        run: mkdir -p zap-reports && chmod 777 zap-reports
 
       - name: Run ZAP Scan
         run: |
           docker run \
             --network zap-net \
-            -v $(pwd):/zap/wrk/:rw \
+            -v $(pwd)/zap-reports:/zap/wrk/:rw \
+            -u zap:zap \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t http://juice-shop:3000 \
@@ -45,10 +49,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zap-reports
-          path: |
-            zap_report.html
-            zap_report.json
-            report.xml
+          path: zap-reports/*
 
       - name: Cleanup
         if: always()
