@@ -47,7 +47,7 @@ jobs:
             -u zap:zap \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
-            -t http://juice-shop:3000 \
+            -t http://192.168.220.149:3000 \
             -r zap_report.html \
             -J zap_report.json \
             -x report.xml \
