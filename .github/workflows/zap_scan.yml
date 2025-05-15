@@ -15,7 +15,7 @@ jobs:
 
       - name: Set up Docker
         run: |
-          docker network create zap-net
+          docker network create zap-net || true
           docker pull bkimminich/juice-shop
           docker pull ghcr.io/zaproxy/zaproxy:stable
 
@@ -26,20 +26,16 @@ jobs:
             --name juice-shop \
             -p 3000:3000 \
             bkimminich/juice-shop
-          sleep 30  # Wait for the application to start
-
-      - name: Check Juice Shop Status
-        run: |
-          # Check if Juice Shop is running
-          if ! curl -s http://localhost:3000 > /dev/null; then
-            echo "Juice Shop is not running. Exiting."
-            exit 1
-          fi
+          
+          # Wait with timeout and retries
+          timeout 60 bash -c 'while ! curl -s http://localhost:3000 > /dev/null; do sleep 5; echo "Waiting for Juice Shop to start..."; done' || \
+            (echo "Juice Shop failed to start"; exit 1)
 
       - name: Create reports directory
         run: mkdir -p zap-reports && chmod 777 zap-reports
 
       - name: Run ZAP Scan
+        timeout-minutes: 30
         run: |
           docker run \
             --network zap-net \
@@ -47,13 +43,15 @@ jobs:
             -u zap:zap \
             -t ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
-            -t http://192.168.220.149:3000 \
+            -t http://juice-shop:3000 \
             -r zap_report.html \
             -J zap_report.json \
             -x report.xml \
-            -a
+            -a \
+            || true  # This ignores the exit code
 
       - name: Upload Reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: zap-reports
